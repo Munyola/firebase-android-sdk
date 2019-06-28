@@ -25,6 +25,8 @@ import com.google.firebase.firestore.model.MaybeDocument;
 import com.google.firebase.firestore.model.ResourcePath;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageLite;
+import com.google.type.Date;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +37,8 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
 
   private final SQLitePersistence db;
   private final LocalSerializer serializer;
+
+  long total = 0;
 
   SQLiteRemoteDocumentCache(SQLitePersistence persistence, LocalSerializer serializer) {
     this.db = persistence;
@@ -111,6 +115,8 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
         !query.isCollectionGroupQuery(),
         "CollectionGroup queries should be handled in LocalDocumentsView");
 
+    long start = System.currentTimeMillis();
+
     // Use the query path as a prefix for testing if a document matches the query.
     ResourcePath prefix = query.getPath();
     int immediateChildrenPathLength = prefix.length() + 1;
@@ -131,7 +137,11 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
               // will return rooms/abc/messages/xyx but we shouldn't match it. Fix this by
               // discarding rows with document keys more than one segment longer than the query
               // path.
-              ResourcePath path = EncodedPath.decodeResourcePath(row.getString(0));
+              String string = row.getString(0);
+
+              if (!string.contains("matching")) return;
+              
+              ResourcePath path = EncodedPath.decodeResourcePath(string);
               if (path.length() != immediateChildrenPathLength) {
                 return;
               }
@@ -149,7 +159,14 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
               results.put(doc.getKey(), doc);
             });
 
-    return ImmutableSortedMap.Builder.fromMap(results, DocumentKey.comparator());
+    ImmutableSortedMap<DocumentKey, Document> entries = ImmutableSortedMap.Builder.fromMap(results, DocumentKey.comparator());
+
+    long end = System.currentTimeMillis();
+long duration = end - start;
+total += duration;
+
+System.out.println("current " + duration + " total " + total);
+    return entries;
   }
 
   private String pathForKey(DocumentKey key) {

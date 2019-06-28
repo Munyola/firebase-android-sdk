@@ -121,7 +121,7 @@ public abstract class SpecTestCase implements RemoteStoreCallback {
   private static final boolean DEBUG = false;
 
   // TODO: Make this configurable with JUnit options.
-  private static final boolean RUN_BENCHMARK_TESTS = false;
+  private static final boolean RUN_BENCHMARK_TESTS = true;
   private static final String BENCHMARK_TAG = "benchmark";
 
   // Disables all other tests; useful for debugging. Multiple tests can have
