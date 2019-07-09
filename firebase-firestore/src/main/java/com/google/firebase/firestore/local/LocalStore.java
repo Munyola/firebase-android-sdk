@@ -135,7 +135,7 @@ public final class LocalStore {
     localDocuments =
         new LocalDocumentsView(remoteDocuments, mutationQueue, persistence.getIndexManager());
     // TODO: Use IndexedQueryEngine as appropriate.
-    queryEngine = new SimpleQueryEngine(localDocuments);
+    queryEngine = new IndexFreeQueryEngine(localDocuments, queryCache);
 
     localViewReferences = new ReferenceSet();
     persistence.getReferenceDelegate().setInMemoryPins(localViewReferences);
@@ -170,7 +170,7 @@ public final class LocalStore {
     localDocuments =
         new LocalDocumentsView(remoteDocuments, mutationQueue, persistence.getIndexManager());
     // TODO: Use IndexedQueryEngine as appropriate.
-    queryEngine = new SimpleQueryEngine(localDocuments);
+    queryEngine = new IndexFreeQueryEngine(localDocuments, queryCache);
 
     // Union the old/new changed keys.
     ImmutableSortedSet<DocumentKey> changedKeys = DocumentKey.emptyKeySet();
@@ -359,7 +359,11 @@ public final class LocalStore {
             if (!resumeToken.isEmpty()) {
               QueryData oldQueryData = queryData;
               queryData =
-                  queryData.copy(remoteEvent.getSnapshotVersion(), resumeToken, sequenceNumber);
+                  queryData.copy(
+                      remoteEvent.getSnapshotVersion(),
+                      resumeToken,
+                      sequenceNumber,
+                      oldQueryData.isSynced());
               targetIds.put(boxedTargetId, queryData);
 
               if (shouldPersistQueryData(oldQueryData, queryData, change)) {
@@ -532,6 +536,20 @@ public final class LocalStore {
     return cached;
   }
 
+  public void markSynced(int targetId) {
+    QueryData queryData = targetIds.get(targetId);
+    hardAssert(
+        queryData != null, "Tried to mark a nonexistent target as synchronized: %s", targetId);
+    QueryData updatedQueryData =
+        queryData.copy(
+            queryData.getSnapshotVersion(),
+            queryData.getResumeToken(),
+            queryData.getSequenceNumber(),
+            /* isSynced= */ true);
+    targetIds.put(targetId, updatedQueryData);
+    queryCache.updateQueryData(updatedQueryData);
+  }
+
   /** Mutable state for the transaction in allocateQuery. */
   private static class AllocateQueryHolder {
     QueryData cached;
@@ -572,7 +590,8 @@ public final class LocalStore {
 
   /** Runs the given query against all the documents in the local store and returns the results. */
   public ImmutableSortedMap<DocumentKey, Document> executeQuery(Query query) {
-    return queryEngine.getDocumentsMatchingQuery(query);
+    QueryData queryData = queryCache.getQueryData(query);
+    return queryEngine.getDocumentsMatchingQuery(query, queryData);
   }
 
   /**

@@ -297,7 +297,11 @@ class SQLiteSchema {
         new String[] {"remote_documents"},
         () -> {
           // A cache of documents obtained from the server.
-          db.execSQL("CREATE TABLE remote_documents (path TEXT PRIMARY KEY, contents BLOB)");
+          db.execSQL(
+              "CREATE TABLE remote_documents ("
+                  + "path TEXT PRIMARY KEY, "
+                  + "snapshot_version_micros INTEGER, "
+                  + "contents BLOB)");
         });
   }
 

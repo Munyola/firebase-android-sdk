@@ -78,6 +78,8 @@ message Target {
     // A target specified by a set of document names.
     google.firestore.v1.Target.DocumentsTarget documents = 6;
   }
+
+  bool synced = 7;
 }
 
 // Global state tracked across all Targets, tracked separately to avoid the

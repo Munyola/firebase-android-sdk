@@ -26,6 +26,7 @@ public final class QueryData {
   private final Query query;
   private final int targetId;
   private final long sequenceNumber;
+  private final boolean synced;
   private final QueryPurpose purpose;
   private final SnapshotVersion snapshotVersion;
   private final ByteString resumeToken;
@@ -47,12 +48,14 @@ public final class QueryData {
       Query query,
       int targetId,
       long sequenceNumber,
+      boolean synced,
       QueryPurpose purpose,
       SnapshotVersion snapshotVersion,
       ByteString resumeToken) {
     this.query = checkNotNull(query);
     this.targetId = targetId;
     this.sequenceNumber = sequenceNumber;
+    this.synced = synced;
     this.purpose = purpose;
     this.snapshotVersion = checkNotNull(snapshotVersion);
     this.resumeToken = checkNotNull(resumeToken);
@@ -64,6 +67,7 @@ public final class QueryData {
         query,
         targetId,
         sequenceNumber,
+        /* synced= */ false,
         purpose,
         SnapshotVersion.NONE,
         WatchStream.EMPTY_RESUME_TOKEN);
@@ -93,6 +97,10 @@ public final class QueryData {
     return resumeToken;
   }
 
+  public boolean isSynced() {
+    return synced;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -106,6 +114,7 @@ public final class QueryData {
     return query.equals(queryData.query)
         && targetId == queryData.targetId
         && sequenceNumber == queryData.sequenceNumber
+        && synced == queryData.synced
         && purpose.equals(queryData.purpose)
         && snapshotVersion.equals(queryData.snapshotVersion)
         && resumeToken.equals(queryData.resumeToken);
@@ -116,6 +125,7 @@ public final class QueryData {
     int result = query.hashCode();
     result = 31 * result + targetId;
     result = 31 * result + (int) sequenceNumber;
+    result = 31 * result + (synced ? 1 : 0);
     result = 31 * result + purpose.hashCode();
     result = 31 * result + snapshotVersion.hashCode();
     result = 31 * result + resumeToken.hashCode();
@@ -131,6 +141,8 @@ public final class QueryData {
         + targetId
         + ", sequenceNumber="
         + sequenceNumber
+        + ", isSynced="
+        + synced
         + ", purpose="
         + purpose
         + ", snapshotVersion="
@@ -142,7 +154,11 @@ public final class QueryData {
 
   /** Creates a new query data instance with an updated snapshot version and resume token. */
   public QueryData copy(
-      SnapshotVersion snapshotVersion, ByteString resumeToken, long sequenceNumber) {
-    return new QueryData(query, targetId, sequenceNumber, purpose, snapshotVersion, resumeToken);
+      SnapshotVersion snapshotVersion,
+      ByteString resumeToken,
+      long sequenceNumber,
+      boolean isSynced) {
+    return new QueryData(
+        query, targetId, sequenceNumber, isSynced, purpose, snapshotVersion, resumeToken);
   }
 }

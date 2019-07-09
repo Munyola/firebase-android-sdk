@@ -38,7 +38,7 @@ import javax.annotation.Nullable;
  * mutations in the MutationQueue to the RemoteDocumentCache.
  */
 // TODO: Turn this into the UnifiedDocumentCache / whatever.
-final class LocalDocumentsView {
+class LocalDocumentsView {
 
   private final RemoteDocumentCache remoteDocumentCache;
   private final MutationQueue mutationQueue;
@@ -130,17 +130,17 @@ final class LocalDocumentsView {
   // memory.
 
   /** Performs a query against the local view of all documents. */
-  ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingQuery(Query query) {
+  ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingQuery(
+      Query query, SnapshotVersion sinceUpdateTime) {
     ResourcePath path = query.getPath();
     if (query.isDocumentQuery()) {
       return getDocumentsMatchingDocumentQuery(path);
     } else if (query.isCollectionGroupQuery()) {
-      return getDocumentsMatchingCollectionGroupQuery(query);
+      return getDocumentsMatchingCollectionGroupQuery(query, sinceUpdateTime);
     } else {
-      return getDocumentsMatchingCollectionQuery(query);
+      return getDocumentsMatchingCollectionQuery(query, sinceUpdateTime);
     }
   }
-
   /** Performs a simple document lookup for the given path. */
   private ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingDocumentQuery(
       ResourcePath path) {
@@ -154,7 +154,7 @@ final class LocalDocumentsView {
   }
 
   private ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingCollectionGroupQuery(
-      Query query) {
+      Query query, SnapshotVersion sinceUpdateTime) {
     hardAssert(
         query.getPath().isEmpty(),
         "Currently we only support collection group queries at the root.");
@@ -167,7 +167,7 @@ final class LocalDocumentsView {
     for (ResourcePath parent : parents) {
       Query collectionQuery = query.asCollectionQueryAtPath(parent.append(collectionId));
       ImmutableSortedMap<DocumentKey, Document> collectionResults =
-          getDocumentsMatchingCollectionQuery(collectionQuery);
+          getDocumentsMatchingCollectionQuery(collectionQuery, sinceUpdateTime);
       for (Map.Entry<DocumentKey, Document> docEntry : collectionResults) {
         results = results.insert(docEntry.getKey(), docEntry.getValue());
       }
@@ -177,9 +177,9 @@ final class LocalDocumentsView {
 
   /** Queries the remote documents and overlays mutations. */
   private ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingCollectionQuery(
-      Query query) {
+      Query query, SnapshotVersion sinceUpdateTime) {
     ImmutableSortedMap<DocumentKey, Document> results =
-        remoteDocumentCache.getAllDocumentsMatchingQuery(query);
+        remoteDocumentCache.getAllDocumentsMatchingQuery(query, sinceUpdateTime);
 
     List<MutationBatch> matchingBatches = mutationQueue.getAllMutationBatchesAffectingQuery(query);
     for (MutationBatch batch : matchingBatches) {

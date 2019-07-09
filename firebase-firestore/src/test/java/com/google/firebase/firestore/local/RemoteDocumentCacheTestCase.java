@@ -32,6 +32,7 @@ import com.google.firebase.firestore.model.Document;
 import com.google.firebase.firestore.model.DocumentKey;
 import com.google.firebase.firestore.model.MaybeDocument;
 import com.google.firebase.firestore.model.NoDocument;
+import com.google.firebase.firestore.model.SnapshotVersion;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -175,7 +176,7 @@ abstract class RemoteDocumentCacheTestCase {
 
     Query query = Query.atPath(path("b"));
     ImmutableSortedMap<DocumentKey, Document> results =
-        remoteDocumentCache.getAllDocumentsMatchingQuery(query);
+        remoteDocumentCache.getAllDocumentsMatchingQuery(query, SnapshotVersion.NONE);
     List<Document> expected = asList(doc("b/1", 42, docData), doc("b/2", 42, docData));
     assertEquals(expected, values(results));
   }

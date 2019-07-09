@@ -24,6 +24,7 @@ import com.google.firebase.firestore.model.DocumentCollections;
 import com.google.firebase.firestore.model.DocumentKey;
 import com.google.firebase.firestore.model.MaybeDocument;
 import com.google.firebase.firestore.model.ResourcePath;
+import com.google.firebase.firestore.model.SnapshotVersion;
 import com.google.firebase.firestore.util.BackgroundQueue;
 import com.google.firebase.firestore.util.Executors;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -48,11 +49,13 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
   @Override
   public void add(MaybeDocument maybeDocument) {
     String path = pathForKey(maybeDocument.getKey());
+    SnapshotVersion snapshotVersion = maybeDocument.getVersion();
     MessageLite message = serializer.encodeMaybeDocument(maybeDocument);
 
     db.execute(
-        "INSERT OR REPLACE INTO remote_documents (path, contents) VALUES (?, ?)",
+        "INSERT OR REPLACE INTO remote_documents (path, snapshot_version_micros, contents) VALUES (?, ?, ?)",
         path,
+        snapshotVersion.toMicroseconds(),
         message.toByteArray());
 
     db.getIndexManager().addToCollectionParentIndex(maybeDocument.getKey().getPath().popLast());
@@ -110,7 +113,8 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
   }
 
   @Override
-  public ImmutableSortedMap<DocumentKey, Document> getAllDocumentsMatchingQuery(Query query) {
+  public ImmutableSortedMap<DocumentKey, Document> getAllDocumentsMatchingQuery(
+      Query query, SnapshotVersion sinceUpdateTime) {
     hardAssert(
         !query.isCollectionGroupQuery(),
         "CollectionGroup queries should be handled in LocalDocumentsView");
@@ -128,8 +132,9 @@ final class SQLiteRemoteDocumentCache implements RemoteDocumentCache {
         (ImmutableSortedMap<DocumentKey, Document>[])
             new ImmutableSortedMap[] {DocumentCollections.emptyDocumentMap()};
 
-    db.query("SELECT path, contents FROM remote_documents WHERE path >= ? AND path < ?")
-        .binding(prefixPath, prefixSuccessorPath)
+    db.query(
+            "SELECT path, contents FROM remote_documents WHERE path >= ? AND path < ? AND snapshot_version_micros >= ? ")
+        .binding(prefixPath, prefixSuccessorPath, sinceUpdateTime.toMicroseconds())
         .forEach(
             row -> {
               // TODO: Actually implement a single-collection query

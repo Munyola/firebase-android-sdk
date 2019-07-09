@@ -878,7 +878,6 @@ public abstract class LocalStoreTestCase {
     testTargetMetadataProvider.setSyncedKeys(queryData, DocumentKey.emptyKeySet());
 
     WatchChangeAggregator aggregator = new WatchChangeAggregator(testTargetMetadataProvider);
-
     WatchTargetChange watchChange =
         new WatchTargetChange(WatchTargetChangeType.Current, asList(targetId), resumeToken);
     aggregator.handleTargetChange(watchChange);

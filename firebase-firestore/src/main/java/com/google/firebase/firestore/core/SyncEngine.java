@@ -504,11 +504,16 @@ public class SyncEngine implements RemoteStore.RemoteStoreCallback {
       ViewChange viewChange = queryView.getView().applyChanges(viewDocChanges, targetChange);
       updateTrackedLimboDocuments(viewChange.getLimboChanges(), queryView.getTargetId());
 
-      if (viewChange.getSnapshot() != null) {
-        newSnapshots.add(viewChange.getSnapshot());
+      ViewSnapshot snapshot = viewChange.getSnapshot();
+      if (snapshot != null) {
+        newSnapshots.add(snapshot);
         LocalViewChanges docChanges =
-            LocalViewChanges.fromViewSnapshot(queryView.getTargetId(), viewChange.getSnapshot());
+            LocalViewChanges.fromViewSnapshot(queryView.getTargetId(), snapshot);
         documentChangesInAllViews.add(docChanges);
+
+        if (snapshot.didSyncStateChange() && snapshot.isSynced()) {
+          localStore.markSynced(queryView.getTargetId());
+        }
       }
     }
     syncEngineListener.onViewSnapshots(newSnapshots);
