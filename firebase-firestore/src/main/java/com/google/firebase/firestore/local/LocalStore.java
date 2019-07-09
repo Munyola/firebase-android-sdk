@@ -536,7 +536,7 @@ public final class LocalStore {
     return cached;
   }
 
-  public void markSynced(int targetId) {
+  public void setSynced(int targetId, boolean synced) {
     QueryData queryData = targetIds.get(targetId);
     hardAssert(
         queryData != null, "Tried to mark a nonexistent target as synchronized: %s", targetId);
@@ -545,9 +545,8 @@ public final class LocalStore {
             queryData.getSnapshotVersion(),
             queryData.getResumeToken(),
             queryData.getSequenceNumber(),
-            /* isSynced= */ true);
+            synced);
     targetIds.put(targetId, updatedQueryData);
-    queryCache.updateQueryData(updatedQueryData);
   }
 
   /** Mutable state for the transaction in allocateQuery. */
@@ -591,7 +590,9 @@ public final class LocalStore {
   /** Runs the given query against all the documents in the local store and returns the results. */
   public ImmutableSortedMap<DocumentKey, Document> executeQuery(Query query) {
     QueryData queryData = queryCache.getQueryData(query);
-    return queryEngine.getDocumentsMatchingQuery(query, queryData);
+    QueryData updatedQueryData = queryData != null ? targetIds.get(queryData.getTargetId()) : null;
+    return queryEngine.getDocumentsMatchingQuery(
+        query, updatedQueryData != null ? updatedQueryData : queryData);
   }
 
   /**

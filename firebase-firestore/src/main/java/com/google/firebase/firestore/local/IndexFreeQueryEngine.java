@@ -14,6 +14,7 @@
 
 package com.google.firebase.firestore.local;
 
+import com.google.android.gms.common.internal.Preconditions;
 import com.google.firebase.database.collection.ImmutableSortedMap;
 import com.google.firebase.database.collection.ImmutableSortedSet;
 import com.google.firebase.firestore.core.Query;
@@ -37,6 +38,7 @@ public class IndexFreeQueryEngine implements QueryEngine {
   public ImmutableSortedMap<DocumentKey, Document> getDocumentsMatchingQuery(
       Query query, @Nullable QueryData queryData) {
     if (isSynced(queryData) && !matchesAllDocuments(query)) {
+      System.out.println("using index-free query");
       // Retrieve all results for documents that were updated since the last remote snapshot.
       ImmutableSortedMap<DocumentKey, Document> docs =
           localDocumentsView.getDocumentsMatchingQuery(query, queryData.getSnapshotVersion());
@@ -55,6 +57,10 @@ public class IndexFreeQueryEngine implements QueryEngine {
         }
       }
 
+      ImmutableSortedMap<DocumentKey, Document> documentsMatchingQuery =
+          localDocumentsView.getDocumentsMatchingQuery(query, SnapshotVersion.NONE);
+
+      Preconditions.checkState(documentsMatchingQuery.equals(docs));
       return docs;
     } else {
       return localDocumentsView.getDocumentsMatchingQuery(query, SnapshotVersion.NONE);

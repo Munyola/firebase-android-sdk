@@ -492,6 +492,7 @@ public class SyncEngine implements RemoteStore.RemoteStoreCallback {
       View view = queryView.getView();
       View.DocumentChanges viewDocChanges = view.computeDocChanges(changes);
       if (viewDocChanges.needsRefill()) {
+        localStore.setSynced(queryView.getTargetId(), false);
         // The query has a limit and some docs were removed/updated, so we need to re-run the query
         // against the local store to make sure we didn't lose any good docs that had been past the
         // limit.
@@ -511,11 +512,12 @@ public class SyncEngine implements RemoteStore.RemoteStoreCallback {
             LocalViewChanges.fromViewSnapshot(queryView.getTargetId(), snapshot);
         documentChangesInAllViews.add(docChanges);
 
-        if (snapshot.didSyncStateChange() && snapshot.isSynced()) {
-          localStore.markSynced(queryView.getTargetId());
+        if (snapshot.didSyncStateChange()) {
+          localStore.setSynced(queryView.getTargetId(), snapshot.isSynced());
         }
       }
     }
+
     syncEngineListener.onViewSnapshots(newSnapshots);
     localStore.notifyLocalViewChanges(documentChangesInAllViews);
   }
